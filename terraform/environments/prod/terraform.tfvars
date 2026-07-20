@@ -2,7 +2,7 @@
 
 subscription_id = "xxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 environment    = "prod"
-project_code   = "webapp-${var.environment}"
+project_code   = "webapp-azure"
 location       = "eastus"
 
 common_tags = {

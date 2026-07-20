@@ -16,6 +16,10 @@ resource "azurerm_linux_web_app" "app_service" {
 
   https_only = var.enable_https_only
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   site_config {
     minimum_tls_version = "1.2"
   }

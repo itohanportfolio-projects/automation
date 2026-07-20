@@ -55,6 +55,7 @@ module "key_vault" {
   key_vault_name      = "kv-${var.environment}-${var.project_code}-${substr(var.location, 0, 3)}"
   sku_name            = local.key_vault_sku
   purge_protection_enabled = var.environment == "prod" ? true : false
+  enable_rbac_authorization = false
   
   tags = merge(
     var.common_tags,
@@ -89,6 +90,17 @@ module "app_service" {
   depends_on = [module.app_insights, module.key_vault]
 }
 
+# Grant App Service managed identity access to Key Vault
+resource "azurerm_key_vault_access_policy" "app_service_access" {
+  key_vault_id            = module.key_vault.key_vault_id
+  tenant_id               = module.key_vault.tenant_id
+  object_id               = module.app_service.app_service_identity_principal_id
+
+  secret_permissions      = ["Get", "List"]
+  key_permissions         = ["Get", "List"]
+  certificate_permissions = ["Get", "List"]
+}
+
 locals {
   app_service_sku = {
     dev      = "B1"
@@ -103,7 +115,7 @@ locals {
   }[var.environment]
 
   retention_days = {
-    dev      = 7
+    dev      = 30
     preprod  = 30
     prod     = 90
   }[var.environment]
