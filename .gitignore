@@ -31,8 +31,6 @@ temp/
 tmp/
 *.temp
 
-# documentation
-*.md
 
 # bash
 *.sh
