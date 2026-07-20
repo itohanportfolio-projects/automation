@@ -2,13 +2,13 @@ terraform {
  
   backend "azurerm" {
     resource_group_name  = "rg-terraform-state-dev"
-    storage_account_name = "stterraformstatedev"
+    storage_account_name = "webappazure"
     container_name       = "terraform-state"
     key                  = "dev.terraform.tfstate"
   }
 }
 
-module "infrastructure-dev" {
+module "webapp_dev" {
   source = "../../"
 
   subscription_id = var.subscription_id
