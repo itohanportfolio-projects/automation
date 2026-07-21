@@ -1,0 +1,160 @@
+trigger:
+  paths:
+    include:
+      - terraform/*
+      - pipelines/terraform.yml
+     
+variables:
+  TF_VERSION: '1.5.7'
+
+stages:
+- stage: Validate
+  displayName: Validate Terraform
+  jobs:
+  - job: Plan
+    displayName: Terraform Plan (matrix)
+    strategy:
+      matrix:
+        dev:
+          envName: dev
+        preprod:
+          envName: preprod
+        prod:
+          envName: prod
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - checkout: self
+
+    - task: Bash@3
+      displayName: Install Terraform
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -e
+          TF_VERSION=${TF_VERSION}
+          if ! command -v terraform >/dev/null; then
+            wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+            unzip -o terraform_${TF_VERSION}_linux_amd64.zip -d /usr/local/bin
+          fi
+          terraform version
+
+    - task: Bash@3
+      displayName: Terraform Init / Plan
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -e
+          echo "Planning for environment: $(envName)"
+          cd terraform/environments/$(envName)
+          terraform init -input=false
+          terraform validate
+          terraform plan -out=$(Build.ArtifactStagingDirectory)/plan-$(envName).tfplan -input=false
+
+    - task: PublishPipelineArtifact@1
+      displayName: Publish plan artifact
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/plan-$(envName).tfplan'
+        artifact: 'terraform-plan-$(envName)'
+
+- stage: Deploy
+  displayName: Deploy
+  dependsOn: Validate
+  jobs:
+  - deployment: DeployDev
+    displayName: Deploy to Dev
+    environment: 'dev'
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download plan artifact (dev)
+            inputs:
+              artifact: 'terraform-plan-dev'
+              path: '$(Pipeline.Workspace)/plans'
+
+          - task: Bash@3
+            displayName: Terraform Apply (dev)
+            inputs:
+              targetType: 'inline'
+              script: |
+                set -e
+                TF_VERSION=${TF_VERSION}
+                if ! command -v terraform >/dev/null; then
+                  wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+                  unzip -o terraform_${TF_VERSION}_linux_amd64.zip -d /usr/local/bin
+                fi
+                cd terraform/environments/dev
+                terraform init -input=false
+                terraform apply "$(Pipeline.Workspace)/plans/plan-dev.tfplan" -input=false -auto-approve
+
+  - deployment: DeployPreprod
+    displayName: Deploy to PreProd (requires approval)
+    environment: 'preprod'
+    dependsOn: DeployDev
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download plan artifact (preprod)
+            inputs:
+              artifact: 'terraform-plan-preprod'
+              path: '$(Pipeline.Workspace)/plans'
+
+          - task: Bash@3
+            displayName: Terraform Apply (preprod)
+            inputs:
+              targetType: 'inline'
+              script: |
+                set -e
+                TF_VERSION=${TF_VERSION}
+                if ! command -v terraform >/dev/null; then
+                  wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+                  unzip -o terraform_${TF_VERSION}_linux_amd64.zip -d /usr/local/bin
+                fi
+                cd terraform/environments/preprod
+                terraform init -input=false
+                terraform apply "$(Pipeline.Workspace)/plans/plan-preprod.tfplan" -input=false -auto-approve
+
+  - deployment: DeployProd
+    displayName: Deploy to Prod (requires approval)
+    environment: 'prod'
+    dependsOn: DeployPreprod
+    pool:
+      vmImage: ubuntu-latest
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download plan artifact (prod)
+            inputs:
+              artifact: 'terraform-plan-prod'
+              path: '$(Pipeline.Workspace)/plans'
+
+          - task: Bash@3
+            displayName: Terraform Apply (prod)
+            inputs:
+              targetType: 'inline'
+              script: |
+                set -e
+                TF_VERSION=${TF_VERSION}
+                if ! command -v terraform >/dev/null; then
+                  wget -q https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
+                  unzip -o terraform_${TF_VERSION}_linux_amd64.zip -d /usr/local/bin
+                fi
+                cd terraform/environments/prod
+                terraform init -input=false
+                terraform apply "$(Pipeline.Workspace)/plans/plan-prod.tfplan" -input=false -auto-approve
