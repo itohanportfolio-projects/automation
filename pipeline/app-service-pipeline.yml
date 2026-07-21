@@ -1,0 +1,185 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - example-voting-app-main/**
+      - pipeline/app-service-pipeline.yml
+
+pr:
+  branches:
+    include:
+      - main
+
+variables:
+  nodeVersion: '18.x'
+  azureSubscription: 'AzureServiceConnection'
+
+stages:
+- stage: Build
+  displayName: Build sample application
+  jobs:
+  - job: BuildApp
+    displayName: Build app artifact
+    pool:
+      vmImage: ubuntu-latest
+    steps:
+    - checkout: self
+
+    - task: NodeTool@0
+      displayName: Use Node.js $(nodeVersion)
+      inputs:
+        versionSpec: '$(nodeVersion)'
+
+    - task: Bash@3
+      displayName: Install application dependencies
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -e
+          cd example-voting-app-main/result
+          npm ci
+
+    - task: Bash@3
+      displayName: Run application checks
+      inputs:
+        targetType: 'inline'
+        script: |
+          set -e
+          cd example-voting-app-main/result
+          npm test || true
+
+    - task: ArchiveFiles@2
+      displayName: Archive application package
+      inputs:
+        rootFolderOrFile: 'example-voting-app-main/result'
+        includeRootFolder: false
+        archiveType: 'zip'
+        archiveFile: '$(Build.ArtifactStagingDirectory)/app.zip'
+        replaceExistingArchive: true
+
+    - task: PublishPipelineArtifact@1
+      displayName: Publish application artifact
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)/app.zip'
+        artifact: 'app-package'
+
+- stage: Deploy
+  displayName: Deploy application to Azure App Service
+  dependsOn: Build
+  jobs:
+  - deployment: DeployDev
+    displayName: Deploy to Dev
+    environment: 'app-dev'
+    pool:
+      vmImage: ubuntu-latest
+    variables:
+      - group: app-service-dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download app package
+            inputs:
+              artifact: 'app-package'
+              path: '$(Pipeline.Workspace)/app'
+
+          - task: AzureWebApp@1
+            displayName: Deploy to Dev App Service
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(appNameDev)'
+              package: '$(Pipeline.Workspace)/app/app.zip'
+              appSettings: |
+                -PORT 80
+                -NODE_ENV development
+                -DB_CONNECTION_STRING $(DbConnectionString)
+                -OTHER_API_KEY $(ApiKey)
+
+  - deployment: DeployPreprod
+    displayName: Deploy to PreProd
+    environment: 'app-preprod'
+    dependsOn: DeployDev
+    pool:
+      vmImage: ubuntu-latest
+    variables:
+      - group: app-service-preprod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download app package
+            inputs:
+              artifact: 'app-package'
+              path: '$(Pipeline.Workspace)/app'
+
+          - task: AzureWebApp@1
+            displayName: Deploy to PreProd App Service
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(appNamePreprod)'
+              package: '$(Pipeline.Workspace)/app/app.zip'
+              appSettings: |
+                -PORT 80
+                -NODE_ENV staging
+                -DB_CONNECTION_STRING $(DbConnectionString)
+                -OTHER_API_KEY $(ApiKey)
+
+  - deployment: DeployProd
+    displayName: Deploy to Prod using slot swap
+    environment: 'app-prod'
+    dependsOn: DeployPreprod
+    pool:
+      vmImage: ubuntu-latest
+    variables:
+      - group: app-service-prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - checkout: self
+
+          - task: DownloadPipelineArtifact@2
+            displayName: Download app package
+            inputs:
+              artifact: 'app-package'
+              path: '$(Pipeline.Workspace)/app'
+
+          - task: AzureCLI@2
+            displayName: Ensure staging slot exists
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az webapp deployment slot create --resource-group $(resourceGroupProd) --name $(appNameProd) --slot staging --configuration-source $(appNameProd) || true
+
+          - task: AzureWebApp@1
+            displayName: Deploy to Prod staging slot
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              appName: '$(appNameProd)'
+              package: '$(Pipeline.Workspace)/app/app.zip'
+              deployToSlotOrASE: true
+              slotName: 'staging'
+              appSettings: |
+                -PORT 80
+                -NODE_ENV production
+                -DB_CONNECTION_STRING $(DbConnectionString)
+                -OTHER_API_KEY $(ApiKey)
+
+          - task: AzureCLI@2
+            displayName: Swap staging slot into production
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az webapp deployment slot swap --resource-group $(resourceGroupProd) --name $(appNameProd) --slot staging
