@@ -1,7 +1,8 @@
 # Terraform and App Service Pipeline Design
 
-# Updated: July 2026
-# CreatedBy: Itohan Eregie
+## Updated: July 2026
+## CreatedBy: Itohan Eregie
+
 ## Overview
 
 This repository implements an automated Azure platform deployment solution using Terraform for infrastructure provisioning and Azure DevOps YAML pipelines for continuous delivery.
@@ -72,9 +73,11 @@ Benefits of this design:
 - Simplifies maintenance and upgrades
 - Allows environment-specific customisation through variables
 ---
-# Environment Separation Strategy
+## Environment Separation Strategy
 Each environment has its own Terraform configuration and state.
 The environments are logically isolated:
+
+
             Development
 
             |
@@ -104,11 +107,10 @@ A production deployment cannot accidentally modify development resources because
 - Different resource groups
 - Different Azure DevOps deployment environment
 ---
-# Terraform Remote State Management
+## Terraform Remote State Management
 Terraform state is stored remotely using an Azure Storage Account backend.
 Terraform state is not stored locally or committed to source control.
 Each environment has a separate state file
-
 
 ## Benefits of Separate State Files
 
@@ -122,10 +124,10 @@ Environment-specific state separation provides:
 
 Terraform state locking is enabled through Azure Storage blob locking to prevent simultaneous modifications.
 ---
-# Environment Configuration Management
+## Environment Configuration Management
 Environment-specific settings are managed through Terraform variables and locals.
 
-# Security Design Choices
+## Security Design Choices
 Managed Identity
 - App Service uses a System Assigned Managed Identity.
 - This removes the requirement to store Azure credentials in:
@@ -134,14 +136,14 @@ Managed Identity
     - Source control
 
 The identity is granted access through Azure RBAC.
-# Key Vault RBAC Authorization
+## Key Vault RBAC Authorization
 The Key Vault implementation uses:
 - enable_rbac_authorization = true
 The App Service identity receives:
 - role_definition_name = "Key Vault Secrets User"
 
 This approach was selected instead of legacy Key Vault access policies.
-# Benefits:
+## Benefits:
 1. Centralised Azure IAM management
 2. Least privilege access
 3. Better auditing
@@ -158,8 +160,7 @@ Application Insights uses a workspace-based configuration:
 log_analytics_workspace_id =
 module.log_analytics.workspace_id
 
-# The App Service receives:
-
+The App Service receives:
 APPLICATIONINSIGHTS_CONNECTION_STRING
 
 This enables monitoring of:
@@ -169,7 +170,7 @@ Exceptions
 Performance metrics
 Dependency calls
 
-# Log Analytics provides centralised storage for:
+## Log Analytics provides centralised storage for:
 
 Application logs
 Platform diagnostics
@@ -177,7 +178,7 @@ Operational troubleshooting
 KQL-based analysis
 Terraform Pipeline Design
 
-# The Terraform Azure DevOps pipeline automates infrastructure deployment.
+## The Terraform Azure DevOps pipeline automates infrastructure deployment.
 
 The pipeline contains two main stages:
 
@@ -186,6 +187,7 @@ Validate
     |
 
 Deploy
+
 Terraform Validate Stage
 The validation stage performs:
 
@@ -208,6 +210,7 @@ Terraform Deployment Strategy
 
 Infrastructure deployment follows an environment promotion model:
 
+
 Development
 
       |
@@ -227,6 +230,8 @@ PreProduction deployment: approval required
 Production deployment: approval required
 
 This provides controlled infrastructure changes and separation of duties.
+
+
 # Application Deployment Pipeline Design
 
 The application pipeline is responsible only for application lifecycle management.
@@ -273,7 +278,7 @@ app.zip
 
 The same artifact is promoted through environments.
 
-Benefits:
+##Benefits:
 - Consistent releases
 - Traceability
 - Reduced deployment differences between environments
@@ -295,7 +300,7 @@ The App Service retrieves secrets securely using Managed Identity.
 Production Deployment Strategy
 Production deployments use App Service deployment slots.
 
-# The release process:
+## The release process:
 
 - Deploy application to staging slot
 - Execute smoke tests
@@ -312,7 +317,7 @@ Benefits:
 
 The design separates responsibilities between pipelines.
 
-# Terraform Pipeline Responsibilities
+## Terraform Pipeline Responsibilities
 
 Terraform manages:
 Azure resources
@@ -323,7 +328,7 @@ RBAC assignments
 Monitoring resources
 Application Pipeline Responsibilities
 
-# Application pipeline manages:
+## Application pipeline manages:
 
 Application packaging
 Testing
@@ -332,7 +337,8 @@ Application configuration
 
 This prevents application deployments from modifying infrastructure security boundaries.
 
-# Assumptions
+## Assumptions
+
 Azure DevOps
 - Azure DevOps is used as the CI/CD platform.
 - A service connection exists:
@@ -366,7 +372,7 @@ resourceGroupDev
 resourceGroupPreprod
 resourceGroupProd
 
-# Application Assumptions
+## Application Assumptions
 
 The sample application:
 
