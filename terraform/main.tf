@@ -55,7 +55,7 @@ module "key_vault" {
   key_vault_name      = "kv-${var.environment}-${var.project_code}-${substr(var.location, 0, 3)}"
   sku_name            = local.key_vault_sku
   purge_protection_enabled = var.environment == "prod" ? true : false
-  enable_rbac_authorization = false
+  enable_rbac_authorization = true
   
   tags = merge(
     var.common_tags,
@@ -77,7 +77,6 @@ module "app_service" {
   
   app_service_settings = {
     APPLICATIONINSIGHTS_CONNECTION_STRING = module.app_insights.connection_string
-    APPINSIGHTS_INSTRUMENTATION_KEY       = module.app_insights.instrumentation_key
     KeyVaultUri                           = module.key_vault.key_vault_uri
     Environment                           = var.environment
   }
@@ -90,15 +89,72 @@ module "app_service" {
   depends_on = [module.app_insights, module.key_vault]
 }
 
-# Grant App Service managed identity access to Key Vault
-resource "azurerm_key_vault_access_policy" "app_service_access" {
-  key_vault_id            = module.key_vault.key_vault_id
-  tenant_id               = module.key_vault.tenant_id
-  object_id               = module.app_service.app_service_identity_principal_id
+resource "azurerm_role_assignment" "app_service_keyvault" {
+  scope               = module.key_vault.key_vault_id
+  role_definition_name = "Key Vault Secrets User"
+  principal_id        = module.app_service.app_service_identity_principal_id
+}
 
-  secret_permissions      = ["Get", "List"]
-  key_permissions         = ["Get", "List"]
-  certificate_permissions = ["Get", "List"]
+resource "azurerm_monitor_diagnostic_setting" "app_service" {
+  name                       = "diag-app-service-${var.environment}"
+  target_resource_id         = module.app_service.app_service_id
+  log_analytics_workspace_id = module.log_analytics.workspace_id
+
+  logs {
+    category = "AppServiceHTTPLogs"
+    enabled  = true
+
+    retention_policy {
+      enabled = false
+      days    = 0
+    }
+  }
+
+  logs {
+    category = "AppServiceConsoleLogs"
+    enabled  = true
+
+    retention_policy {
+      enabled = false
+      days    = 0
+    }
+  }
+
+  metrics {
+    category = "AllMetrics"
+    enabled  = true
+
+    retention_policy {
+      enabled = false
+      days    = 0
+    }
+  }
+}
+
+resource "azurerm_monitor_diagnostic_setting" "key_vault" {
+  name                       = "diag-key-vault-${var.environment}"
+  target_resource_id         = module.key_vault.key_vault_id
+  log_analytics_workspace_id = module.log_analytics.workspace_id
+
+  logs {
+    category = "AuditEvent"
+    enabled  = true
+
+    retention_policy {
+      enabled = false
+      days    = 0
+    }
+  }
+
+  metrics {
+    category = "AllMetrics"
+    enabled  = true
+
+    retention_policy {
+      enabled = false
+      days    = 0
+    }
+  }
 }
 
 locals {

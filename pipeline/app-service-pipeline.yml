@@ -48,7 +48,7 @@ stages:
         script: |
           set -e
           cd example-voting-app-main/result
-          npm test || true
+          npm test
 
     - task: ArchiveFiles@2
       displayName: Archive application package
@@ -88,6 +88,18 @@ stages:
               artifact: 'app-package'
               path: '$(Pipeline.Workspace)/app'
 
+          - task: AzureCLI@2
+            displayName: Enable managed identity and Key Vault access for Dev
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                az webapp identity assign --resource-group $(resourceGroupDev) --name $(appNameDev)
+                principalId=$(az webapp identity show --resource-group $(resourceGroupDev) --name $(appNameDev) --query principalId -o tsv)
+                az keyvault set-policy --name $(keyVaultDev) --object-id $principalId --secret-permissions get list || true
+
           - task: AzureWebApp@1
             displayName: Deploy to Dev App Service
             inputs:
@@ -97,8 +109,8 @@ stages:
               appSettings: |
                 -PORT 80
                 -NODE_ENV development
-                -DB_CONNECTION_STRING $(DbConnectionString)
-                -OTHER_API_KEY $(ApiKey)
+                -DB_CONNECTION_STRING @Microsoft.KeyVault(SecretUri=$(DbConnectionStringSecretUri))
+                -OTHER_API_KEY @Microsoft.KeyVault(SecretUri=$(ApiKeySecretUri))
 
   - deployment: DeployPreprod
     displayName: Deploy to PreProd
@@ -120,6 +132,18 @@ stages:
               artifact: 'app-package'
               path: '$(Pipeline.Workspace)/app'
 
+          - task: AzureCLI@2
+            displayName: Enable managed identity and Key Vault access for PreProd
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                az webapp identity assign --resource-group $(resourceGroupPreprod) --name $(appNamePreprod)
+                principalId=$(az webapp identity show --resource-group $(resourceGroupPreprod) --name $(appNamePreprod) --query principalId -o tsv)
+                az keyvault set-policy --name $(keyVaultPreprod) --object-id $principalId --secret-permissions get list || true
+
           - task: AzureWebApp@1
             displayName: Deploy to PreProd App Service
             inputs:
@@ -129,8 +153,8 @@ stages:
               appSettings: |
                 -PORT 80
                 -NODE_ENV staging
-                -DB_CONNECTION_STRING $(DbConnectionString)
-                -OTHER_API_KEY $(ApiKey)
+                -DB_CONNECTION_STRING @Microsoft.KeyVault(SecretUri=$(DbConnectionStringSecretUri))
+                -OTHER_API_KEY @Microsoft.KeyVault(SecretUri=$(ApiKeySecretUri))
 
   - deployment: DeployProd
     displayName: Deploy to Prod using slot swap
@@ -161,6 +185,18 @@ stages:
               inlineScript: |
                 az webapp deployment slot create --resource-group $(resourceGroupProd) --name $(appNameProd) --slot staging --configuration-source $(appNameProd) || true
 
+          - task: AzureCLI@2
+            displayName: Enable managed identity and Key Vault access for Prod
+            inputs:
+              azureSubscription: '$(azureSubscription)'
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                set -e
+                az webapp identity assign --resource-group $(resourceGroupProd) --name $(appNameProd)
+                principalId=$(az webapp identity show --resource-group $(resourceGroupProd) --name $(appNameProd) --query principalId -o tsv)
+                az keyvault set-policy --name $(keyVaultProd) --object-id $principalId --secret-permissions get list || true
+
           - task: AzureWebApp@1
             displayName: Deploy to Prod staging slot
             inputs:
@@ -172,8 +208,20 @@ stages:
               appSettings: |
                 -PORT 80
                 -NODE_ENV production
-                -DB_CONNECTION_STRING $(DbConnectionString)
-                -OTHER_API_KEY $(ApiKey)
+                -DB_CONNECTION_STRING @Microsoft.KeyVault(SecretUri=$(DbConnectionStringSecretUri))
+                -OTHER_API_KEY @Microsoft.KeyVault(SecretUri=$(ApiKeySecretUri))
+
+          - task: Bash@3
+            displayName: Run smoke tests against Prod staging slot
+            inputs:
+              targetType: 'inline'
+              script: |
+                set -e
+                stagingUrl="https://$(appNameProd)-staging.azurewebsites.net"
+                echo "Waiting for staging slot to warm up: ${stagingUrl}"
+                sleep 15
+                curl -f ${stagingUrl}
+                echo "Smoke test passed: ${stagingUrl} returned 200"
 
           - task: AzureCLI@2
             displayName: Swap staging slot into production
