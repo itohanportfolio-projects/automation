@@ -98,7 +98,8 @@ stages:
                 set -e
                 az webapp identity assign --resource-group $(resourceGroupDev) --name $(appNameDev)
                 principalId=$(az webapp identity show --resource-group $(resourceGroupDev) --name $(appNameDev) --query principalId -o tsv)
-                az keyvault set-policy --name $(keyVaultDev) --object-id $principalId --secret-permissions get list || true
+                keyVaultId=$(az keyvault show --name $(keyVaultDev) --query id -o tsv)
+                az role assignment create --role "Key Vault Secrets User" --assignee-object-id $principalId --scope $keyVaultId || true
 
           - task: AzureWebApp@1
             displayName: Deploy to Dev App Service
@@ -142,7 +143,8 @@ stages:
                 set -e
                 az webapp identity assign --resource-group $(resourceGroupPreprod) --name $(appNamePreprod)
                 principalId=$(az webapp identity show --resource-group $(resourceGroupPreprod) --name $(appNamePreprod) --query principalId -o tsv)
-                az keyvault set-policy --name $(keyVaultPreprod) --object-id $principalId --secret-permissions get list || true
+                keyVaultId=$(az keyvault show --name $(keyVaultPreprod) --query id -o tsv)
+                az role assignment create --role "Key Vault Secrets User" --assignee-object-id $principalId --scope $keyVaultId || true
 
           - task: AzureWebApp@1
             displayName: Deploy to PreProd App Service
@@ -195,7 +197,8 @@ stages:
                 set -e
                 az webapp identity assign --resource-group $(resourceGroupProd) --name $(appNameProd)
                 principalId=$(az webapp identity show --resource-group $(resourceGroupProd) --name $(appNameProd) --query principalId -o tsv)
-                az keyvault set-policy --name $(keyVaultProd) --object-id $principalId --secret-permissions get list || true
+                keyVaultId=$(az keyvault show --name $(keyVaultProd) --query id -o tsv)
+                az role assignment create --role "Key Vault Secrets User" --assignee-object-id $principalId --scope $keyVaultId || true
 
           - task: AzureWebApp@1
             displayName: Deploy to Prod staging slot
