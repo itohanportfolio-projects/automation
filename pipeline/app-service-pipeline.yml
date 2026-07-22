@@ -1,16 +1,16 @@
 trigger:
   branches:
     include:
-      - main
+      - master
   paths:
     include:
-      - example-voting-app-main/**
+      - example-voting-app-main/result
       - pipeline/app-service-pipeline.yml
 
 pr:
   branches:
     include:
-      - main
+      - master
 
 variables:
   nodeVersion: '18.x'
@@ -88,19 +88,7 @@ stages:
               artifact: 'app-package'
               path: '$(Pipeline.Workspace)/app'
 
-          - task: AzureCLI@2
-            displayName: Enable managed identity and Key Vault access for Dev
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                set -e
-                az webapp identity assign --resource-group $(resourceGroupDev) --name $(appNameDev)
-                principalId=$(az webapp identity show --resource-group $(resourceGroupDev) --name $(appNameDev) --query principalId -o tsv)
-                keyVaultId=$(az keyvault show --name $(keyVaultDev) --query id -o tsv)
-                az role assignment create --role "Key Vault Secrets User" --assignee-object-id $principalId --scope $keyVaultId || true
-
+          
           - task: AzureWebApp@1
             displayName: Deploy to Dev App Service
             inputs:
