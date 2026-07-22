@@ -1,9 +1,11 @@
 # Terraform and App Service Pipeline Design
 
-## Updated: July 2026
+## Updated: July 21st 2026
 ## CreatedBy: Itohan Eregie
 
 ## Overview
+
+![Architecture](automation/image.png)
 
 This repository implements an automated Azure platform deployment solution using Terraform for infrastructure provisioning and Azure DevOps YAML pipelines for continuous delivery.
 
@@ -354,10 +356,10 @@ This centralizes all environment-specific configuration in one location.
 
 Benefits include:
 
--easier maintenance
-cleaner code
-simpler onboarding
-consistent configuration
+- easier maintenance
+- cleaner code
+- simpler onboarding
+- consistent configuration
 
 ## Assumptions
 
