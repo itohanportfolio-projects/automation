@@ -95,68 +95,6 @@ resource "azurerm_role_assignment" "app_service_keyvault" {
   principal_id        = module.app_service.app_service_identity_principal_id
 }
 
-resource "azurerm_monitor_diagnostic_setting" "app_service" {
-  name                       = "diag-app-service-${var.environment}"
-  target_resource_id         = module.app_service.app_service_id
-  log_analytics_workspace_id = module.log_analytics.workspace_id
-
-  logs {
-    category = "AppServiceHTTPLogs"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-      days    = 0
-    }
-  }
-
-  logs {
-    category = "AppServiceConsoleLogs"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-      days    = 0
-    }
-  }
-
-  metrics {
-    category = "AllMetrics"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-      days    = 0
-    }
-  }
-}
-
-resource "azurerm_monitor_diagnostic_setting" "key_vault" {
-  name                       = "diag-key-vault-${var.environment}"
-  target_resource_id         = module.key_vault.key_vault_id
-  log_analytics_workspace_id = module.log_analytics.workspace_id
-
-  logs {
-    category = "AuditEvent"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-      days    = 0
-    }
-  }
-
-  metrics {
-    category = "AllMetrics"
-    enabled  = true
-
-    retention_policy {
-      enabled = false
-      days    = 0
-    }
-  }
-}
-
 locals {
   app_service_sku = {
     dev      = "B1"

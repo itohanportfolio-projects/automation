@@ -5,7 +5,7 @@ resource "azurerm_key_vault" "key_vault" {
   enabled_for_disk_encryption     = false
   enabled_for_deployment          = var.enabled_for_deployment
   enabled_for_template_deployment = var.enabled_for_template_deployment
-  enable_rbac_authorization       = var.enable_rbac_authorization
+ # enable_rbac_authorization       = var.enable_rbac_authorization
   purge_protection_enabled        = var.purge_protection_enabled
   soft_delete_retention_days      = var.soft_delete_retention_days
   sku_name                        = var.sku_name

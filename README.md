@@ -337,6 +337,28 @@ Application configuration
 
 This prevents application deployments from modifying infrastructure security boundaries.
 
+##Local variables
+Instead of writing conditional logic throughout the code, environment-specific values are stored in locals.
+
+Example:
+
+locals {
+  app_service_sku = {
+    dev      = "B1"
+    preprod  = "S1"
+    prod     = "P1V2"
+  }[var.environment]
+}
+
+This centralizes all environment-specific configuration in one location.
+
+Benefits include:
+
+-easier maintenance
+cleaner code
+simpler onboarding
+consistent configuration
+
 ## Assumptions
 
 Azure DevOps

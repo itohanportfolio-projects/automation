@@ -12,7 +12,7 @@ stages:
   displayName: Validate Terraform
   jobs:
   - job: Plan
-    displayName: Terraform Plan (matrix)
+    displayName: Terraform Plan 
     strategy:
       matrix:
         dev:
