@@ -5,7 +5,7 @@
 
 ## Overview
 
-![Architecture](automation/image.png)
+![Architecture Diagram](image.png)
 
 This repository implements an automated Azure platform deployment solution using Terraform for infrastructure provisioning and Azure DevOps YAML pipelines for continuous delivery.
 
