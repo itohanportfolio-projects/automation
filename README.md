@@ -369,11 +369,7 @@ Azure DevOps
     - AzureServiceConnection
 
 The service connection is assumed to use secure authentication.
-
-Recommended:
-
-Workload Identity Federation
-instead of long-lived client secrets.
+##Variables
 Variable Groups
 Environment-specific variable groups are configured:
 - app-service-dev

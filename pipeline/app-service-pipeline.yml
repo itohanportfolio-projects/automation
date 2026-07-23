@@ -154,16 +154,9 @@ stages:
               artifact: 'app-package'
               path: '$(Pipeline.Workspace)/app'
 
-          - task: AzureCLI@2
-            displayName: Ensure staging slot exists
-            inputs:
-              azureSubscription: '$(azureSubscription)'
-              scriptType: bash
-              scriptLocation: inlineScript
-              inlineScript: |
-                az webapp deployment slot create --resource-group $(resourceGroupProd) --name $(appNameProd) --slot staging --configuration-source $(appNameProd) || true
-
-                    - task: AzureWebApp@1
+          
+          
+          - task: AzureWebApp@1
             displayName: Deploy to Prod staging slot
             inputs:
               azureSubscription: '$(azureSubscription)'

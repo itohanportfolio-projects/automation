@@ -1,6 +1,5 @@
 terraform {
-  # State backend configuration for production
-  # Uncomment and configure to use remote state
+  
   backend "azurerm" {
     resource_group_name  = "rg-terraform-state-prod"
     storage_account_name = "stterraformstateprod"

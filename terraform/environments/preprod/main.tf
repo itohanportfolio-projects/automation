@@ -1,11 +1,11 @@
 terraform {
   
-  # backend "azurerm" {
-  #   resource_group_name  = "rg-terraform-state-preprod"
-  #   storage_account_name = "stterraformstatepreprod"
-  #   container_name       = "terraform-state"
-  #   key                  = "preprod.terraform.tfstate"
-  # }
+  backend "azurerm" {
+    resource_group_name  = "rg-terraform-state-preprod"
+    storage_account_name = "stterraformstatepreprod"
+    container_name       = "terraform-state"
+    key                  = "preprod.terraform.tfstate"
+  }
 }
 
 module "infrastructure-preprod" {

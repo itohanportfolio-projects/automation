@@ -40,6 +40,26 @@ variable "app_service_settings" {
   default     = {}
 }
 
+variable "app_service_slot_enabled" {
+  description = "Whether to create a staging deployment slot for the App Service"
+  type        = bool
+  default     = true
+}
+
+variable "app_service_slot_name" {
+  description = "Name of the App Service deployment slot"
+  type        = string
+  default     = "staging"
+}
+
+variable "app_service_slot_settings" {
+  description = "App settings for the staging deployment slot"
+  type        = map(string)
+  default     = {
+    NODE_ENV = "production"
+  }
+}
+
 variable "tags" {
   description = "Tags to apply to resources"
   type        = map(string)
